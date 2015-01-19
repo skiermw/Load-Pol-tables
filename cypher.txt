@@ -1,0 +1,46 @@
+CREATE CONSTRAINT ON (p:Policy) ASSERT p.num IS UNIQUE;
+CREATE CONSTRAINT ON (i:Insured) ASSERT i.id IS UNIQUE;
+CREATE CONSTRAINT ON (a:Address) ASSERT a.id IS UNIQUE;
+
+// Policy, Insureds, Address
+USING PERIODIC COMMIT
+LOAD CSV WITH HEADERS FROM
+'file:///home/mark/Downloads/POL01_65203.csv' AS line
+WITH line, SPLIT(line.FIRST_POL_EFF_DT, '-') AS date
+
+MERGE (policy:Policy {num: line.POLICY_NO})
+SET policy.company = TOINT(line.COMPANY_ID)
+SET policy.line = TOINT(line.LINE_ID)
+SET policy.total_prem = TOFLOAT(line.TOTAL_PREMIUM_AM)
+SET policy.tier = TOINT(line.TIER_CD)
+SET policy.risk_desc = line.RISK_DESC
+SET policy.first_eff_year = TOINT(line.date[0])
+SET policy.first_eff_month = TOINT(line.date[1])
+SET policy.first_eff_day = TOINT(line.date[2])
+
+MERGE (insured:Insured {id: UPPER(line.INSURED_NM)+line.FAMILY_NO})
+SET insured.name = TOUPPER(line.INS_NM)
+SET insured.family_num = TOINT(line.FAMILY_NO)
+
+MERGE (address:Address {id: line.INS_ADDRESS+line.INS_ZIP_CD})
+SET address.street = line.INS_ADDRESS
+SET address.city = TOUPPER(line.INS_CITY)
+SET address.state = TOUPPER(line.INS_STATE)
+SET address.zip = TOINT(line.INS_ZIP_CD)
+
+CREATE (insured)-[:OWNS]->(policy)
+MERGE (insured)-[:LIVES_AT]->(address)
+;
+// Agent
+CREATE CONSTRAINT ON (a:Agent) ASSERT a.num IS UNIQUE;
+
+USING PERIODIC COMMIT
+LOAD CSV WITH HEADERS FROM
+'file:///home/mark/Downloads/POL01_65203.csv' AS line
+
+MERGE (policy:Policy {num: line.POLICY_NO})
+
+MERGE (a:Agent {number: line.AGENT_NO})
+
+CREATE (policy)-[:SERVICED_BY]->(a)
+;
