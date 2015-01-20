@@ -18,8 +18,8 @@ SET policy.first_eff_year = TOINT(line.date[0])
 SET policy.first_eff_month = TOINT(line.date[1])
 SET policy.first_eff_day = TOINT(line.date[2])
 
-MERGE (insured:Insured {id: UPPER(line.INSURED_NM)+line.FAMILY_NO})
-SET insured.name = TOUPPER(line.INS_NM)
+MERGE (insured:Insured {id: TOUPPER(line.INSURED_NM)+line.FAMILY_NO})
+SET insured.name = TOUPPER(line.INSURED_NM)
 SET insured.family_num = TOINT(line.FAMILY_NO)
 
 MERGE (address:Address {id: line.INS_ADDRESS+line.INS_ZIP_CD})
@@ -31,6 +31,7 @@ SET address.zip = TOINT(line.INS_ZIP_CD)
 CREATE (insured)-[:OWNS]->(policy)
 MERGE (insured)-[:LIVES_AT]->(address)
 ;
+
 // Agent
 CREATE CONSTRAINT ON (a:Agent) ASSERT a.num IS UNIQUE;
 
@@ -44,3 +45,17 @@ MERGE (a:Agent {number: line.AGENT_NO})
 
 CREATE (policy)-[:SERVICED_BY]->(a)
 ;
+
+// fix to load Insured name
+USING PERIODIC COMMIT
+LOAD CSV WITH HEADERS FROM
+'file:///home/mark/Downloads/POL01_65203.csv' AS line
+
+MERGE (insured:Insured {id: TOUPPER(line.INSURED_NM)+line.FAMILY_NO})
+SET insured.name = TOUPPER(line.INSURED_NM)
+;
+
+// Client, policy clean up - ID likely insureds that are the same
+
+match (i:Insured)-[:LIVES_AT]->(a)<-[:LIVES_AT]-(i2)
+return i,  collect(distinct i2) as possible_dups limit 5
