@@ -57,5 +57,5 @@ SET insured.name = TOUPPER(line.INSURED_NM)
 
 // Client, policy clean up - ID likely insureds that are the same
 
-match (i:Insured)-[:LIVES_AT]->(a)<-[:LIVES_AT]-(i2)
+match (i:Insured)-[:LIVES_AT]->(a)<-[:LIVES_AT*0..]-(i2)
 return i,  collect(distinct i2) as possible_dups limit 5
